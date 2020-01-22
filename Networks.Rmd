@@ -1,0 +1,114 @@
+---
+title: "Visualisation de réseaux"
+subtitle: "Essai de plusieurs packages sur les gènes répondant au CO2"
+author: "Océane Cassan"
+date: "10/25/2019"
+output: 
+  rmdformats::material:
+    fig_width: 12
+    highlight: kate
+    includes:
+        after_body: footer.html
+---
+
+On cherche à étudier les réseaux de coexpression obtenus à partir de données transcriptomiques.
+
+On prend ici les 131 gènes qui ont été détectés comme différentiellement exprimés en réponse au fort CO2. 
+On infère leur réseau de coexpression par un modèle graphique gaussien latent (Chiquet et Al.), et clustering par modèles de mélanges à lois de Poisson (Rau et Al.)
+
+```{r knitr_init, echo=FALSE, cache=FALSE}
+library(knitr, warn.conflicts = F, quietly = T)
+library(rmdformats, warn.conflicts = F, quietly = T)
+
+## Global options
+options(max.print="75")
+opts_chunk$set(cache=FALSE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE,
+               fig.align = "center")
+opts_knit$set(width=75)
+#setwd("~/Documents/CombinatoireFeNCO2/Combinatoire/")
+setwd("./")
+library(corrplot)
+suppressMessages(library(gridExtra, warn.conflicts = F, quietly = T))
+suppressMessages(library(stringr, warn.conflicts = F, quietly = T))
+suppressMessages(library(ggpubr, warn.conflicts = F, quietly = T))
+suppressMessages(library(ggplot2, warn.conflicts = F, quietly = T))
+suppressMessages(library(igraph, warn.conflicts = F, quietly = T))
+
+```
+
+# Avec le package network D3
+
+http://christophergandrud.github.io/networkD3/
+
+
+Les couleurs de noeuds correspondent au clustering fait au prélable.
+L'objet igraph est loadé puis tranformé en objet compatible avec network_d3.
+
+
+```{r}
+library(networkD3)
+load("./CO2_igraph_network.RData")
+TF <- read.table("TFs_PlnTFDB.txt", h=T, sep = '\t')
+TF$AGI <- str_split_fixed(TF$Protein.ID, '\\.', 2)[,1]
+
+V(net)$is.TF <- ifelse(V(net)$name %in% TF$AGI, 1, 0)
+print(paste(sum(as.numeric(V(net)$is.TF)) , "genes are TFs"))
+plot.igraph(net, vertex.size=10, vertex.color =V(net)$is.TF)
+
+
+net_d3 <- igraph_to_networkD3(net, group = V(net)$color)
+net_d3$nodes$isTF = ifelse(net_d3$node$name %in% TF$AGI, "Hell yeah", "Nah, just a target")
+# Create force directed network plot
+
+MyClickScript <- 'alert("You clicked " + d.name);'
+
+forceNetwork(Links = net_d3$links, Nodes = net_d3$nodes, 
+             Source = 'source', Target = 'target',  charge =-20,
+             NodeID = 'name', Group = 'group', opacity = 0.8, fontSize = 12, zoom = T, bounded = T, clickAction = MyClickScript)
+
+
+```
+
+On souhaite ajouter l'information de quels gènes sont des facteurs de transcription.
+
+On essaie ensuite avec un plus gros réseau, composé de 400 des gènes répondant au nitrate.
+```{r}
+net_d3 <- igraph_to_networkD3(net, group = V(net)$is.TF)
+forceNetwork(Links = net_d3$links, Nodes = net_d3$nodes, 
+             Source = 'source', Target = 'target', charge =-20,colourScale = "d3.scaleOrdinal(d3.schemeCategory10);",
+             NodeID = 'name', Group = 'group', opacity = 0.8, fontSize = 12, zoom = T, bounded = T, clickAction = MyClickScript)
+
+load("./Nitrate_igraph_network.RData")
+V(net)$is.TF <- ifelse(V(net)$name %in% TF$AGI, 1, 0)
+print(paste(sum(as.numeric(V(net)$is.TF)) , "genes are TFs"))
+
+net_d3 <- igraph_to_networkD3(net, group = V(net)$is.TF)
+forceNetwork(Links = net_d3$links, Nodes = net_d3$nodes, 
+             Source = 'source', Target = 'target', charge =-20, colourScale = "d3.scaleOrdinal(d3.schemeCategory10);",
+             NodeID = 'name', Group = 'group', opacity = 0.8, fontSize = 12, zoom = T, bounded = T, clickAction = MyClickScript)
+```
+
+Palettes d3 js à choisir ici : https://bl.ocks.org/pstuffa/3393ff2711a53975040077b7453781a9
+
+# Avec le package visNetwork, qui a l'air plus cutomisable
+
+
+```{r}
+load("./CO2_igraph_network.RData")
+
+library(visNetwork)
+data <- toVisNetworkData(net)
+#visNetwork(nodes = data$nodes, edges = data$edges)
+
+data$nodes$size <- data$nodes$size*10
+
+
+visNetwork(nodes = data$nodes, edges = data$edges, height = "500px", width = "100%") %>%
+ visPhysics(solver = "barnesHut", timestep = 0.1, minVelocity=0.2, stabilization = FALSE)
+
+```
