@@ -35,6 +35,17 @@ ui <- fluidPage(theme = shinytheme("flatly"),
             DT::dataTableOutput("Ontologies")
             
         )
+    ),
+    
+    hr(),
+    fluidRow(
+        column(
+            width = 12,
+            div(h3("You selected"), align = "center"),
+            verbatimTextOutput("SelectedGene"),
+            plotOutput("expression_plot")
+            
+        )
     )
     
     
@@ -44,21 +55,41 @@ ui <- fluidPage(theme = shinytheme("flatly"),
 server <- function(input, output) {
     
     load("./DataNetworkGenieCO2Clusters.RData")
+    load("./normalized.count_At.RData")
     
     output$network <- renderVisNetwork({
         visNetwork(nodes = data$nodes, edges = data$edges, height = "10%", width = "100%") %>%
             visEdges(smooth = FALSE) %>% visPhysics(solver = "forceAtlas2Based", timestep = 1, minVelocity=10, maxVelocity = 10, stabilization = F)%>%
             visOptions(selectedBy = "group", 
                        highlightNearest = TRUE, 
-                       nodesIdSelection  = TRUE, collapse = TRUE)
+                       nodesIdSelection  = TRUE, collapse = TRUE)%>% visEvents(click = "function(nodes){
+                  Shiny.onInputChange('click', nodes.nodes[0]);
+                  ;}"
+                       )
         
         
     })
     
-    output$SelectedGene <- renderPrint({print(input$mynetwork_selected)})
+    output$SelectedGene <- renderPrint({
+        print(input$click)
+    })
+    
+    #output$SelectedGene <- renderPrint({print(input$mynetwork_selectedBy)})
     
 
-    output$Ontologies <- DT::renderDataTable(data$nodes[c("description", "Ontology")])
+    output$Ontologies <- DT::renderDataTable({
+        if(is.null(input$click)){
+            data$nodes[c("description", "Ontology")]
+        }
+        else{
+            data$nodes[input$click,c("description", "Ontology")]
+        }})
+    
+    output$expression_plot <- renderPlot({
+        getExpression(input$click)
+        
+        
+    })
     
 
 }
