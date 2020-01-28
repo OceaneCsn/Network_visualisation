@@ -105,10 +105,12 @@ library(visNetwork)
 data <- toVisNetworkData(net)
 #visNetwork(nodes = data$nodes, edges = data$edges)
 
-data$nodes$size <- data$nodes$size*10
+data$nodes$size
 
+
+# visNetwork(nodes = data$nodes, edges = data$edges, height = "500px", width = "100%") %>%
+#  visPhysics(solver = "hierarchicalRepulsion", timestep = 1, minVelocity=1, maxVelocity = 50, stabilization = F)
 
 visNetwork(nodes = data$nodes, edges = data$edges, height = "500px", width = "100%") %>%
- visPhysics(solver = "barnesHut", timestep = 0.1, minVelocity=0.2, stabilization = FALSE)
-
+  visEdges(smooth = FALSE) %>% visPhysics(solver = "forceAtlas2Based", timestep = 1, minVelocity=10, maxVelocity = 10, stabilization = F)
 ```

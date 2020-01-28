@@ -1,0 +1,120 @@
+---
+title: "Network inference"
+author: "Océane"
+date: "1/23/2020"
+output: 
+  rmdformats::material:
+    fig_width: 12
+    highlight: kate
+    includes:
+        after_body: footer.html
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr, warn.conflicts = F, quietly = T)
+library(rmdformats, warn.conflicts = F, quietly = T)
+library(stringr)
+library(igraph)
+library(shiny)
+```
+
+
+
+# Inputs and Outputs
+
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+
+To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r eruptions, echo=FALSE}
+inputPanel(
+  selectInput("n_breaks", label = "Number of bins:",
+              choices = c(10, 20, 35, 50), selected = 20),
+  
+  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+              min = 0.2, max = 2, value = 1, step = 0.2)
+)
+
+print("coucou")
+renderPlot({
+  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  
+  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+
+
+
+```
+
+# Embedded Application
+
+It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
+
+```{r tabsets, echo=FALSE}
+shinyAppDir(
+  system.file("examples/06_tabsets", package = "shiny"),
+  options = list(
+    width = "100%", height = 550
+  )
+)
+```
+
+Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
+
+You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+
+In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+
+# Network visulisation
+
+
+```{r net}
+
+library(networkD3)
+library(stringr)
+library(igraph)
+library(visNetwork)
+  # load("./CO2_igraph_network.RData")
+  # TF <- read.table("TFs_PlnTFDB.txt", h=T, sep = '\t')
+  # TF$AGI <- str_split_fixed(TF$Protein.ID, '\\.', 2)[,1]
+  # 
+  # V(net)$is.TF <- ifelse(V(net)$name %in% TF$AGI, 1, 0)
+  # print(paste(sum(as.numeric(V(net)$is.TF)) , "genes are TFs"))
+  # plot.igraph(net, vertex.size=10, vertex.color =V(net)$is.TF)
+  # 
+  # 
+  # net_d3 <- igraph_to_networkD3(net, group = V(net)$color)
+  # net_d3$nodes$isTF = ifelse(net_d3$node$name %in% TF$AGI, "Hell yeah", "Nah, just a target")
+  # # Create force directed network plot
+  # 
+  # MyClickScript <- 'alert("You clicked " + d.name);'
+  # 
+  # forceNetwork(Links = net_d3$links, Nodes = net_d3$nodes, height = 50,
+  #              Source = 'source', Target = 'target',  charge =-20,
+  #              NodeID = 'name', Group = 'group', opacity = 0.8, fontSize = 12, zoom = T, bounded = T, clickAction = MyClickScript)
+
+
+server <- function(input, output) {
+  output$network <- renderVisNetwork({
+    load("./CO2_igraph_network.RData")
+    data <- toVisNetworkData(net)
+  #visNetwork(nodes = data$nodes, edges = data$edges)
+  data$nodes$size <- data$nodes$size*10
+visNetwork(nodes = data$nodes, edges = data$edges, height = "500px", width = "100%") %>%
+  visEdges(smooth = FALSE) %>% visPhysics(solver = "forceAtlas2Based", timestep = 1, minVelocity=10, maxVelocity = 10, stabilization = F)
+  })
+}
+
+ui <- fluidPage(
+    visNetworkOutput("network")
+)
+
+shinyApp(ui = ui, server = server)
+```
+

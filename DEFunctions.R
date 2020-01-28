@@ -13,6 +13,7 @@ suppressMessages(library(coseq, warn.conflicts = F, quietly = T))
 suppressMessages(library(ade4, warn.conflicts = F, quietly = T))
 suppressMessages(library(adegraphics, warn.conflicts = F, quietly = T))
 suppressMessages(library(RColorBrewer, warn.conflicts = F, quietly = T))
+suppressMessages(library(stringr, warn.conflicts = F, quietly = T))
 
 
 
